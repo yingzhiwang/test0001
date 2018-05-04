@@ -1,0 +1,237 @@
+apiVersion: devops.alauda.io/v1alpha1
+kind: PipelineTemplate
+metadata:
+  name: alaudaBuildImage
+  annotations:
+    alauda.io/displayName.zh-CN: 用户自定义构建
+    alauda.io/displayName.en: Build docker image
+    alauda.io/description.zh-CN: 克隆代码并构建镜像
+    alauda.io/description.en: Clone code and builds a docker image
+    alauda.io/readme.zh-CN: 克隆代码并构建镜像
+    alauda.io/readme.en: Clone code and builds a docker image
+    alauda.io/version: v0.2
+    alauda.io/style.icon: build
+  labels:
+    catgory: CI
+spec:
+  engine: graph
+  withSCM: true
+  stages:
+    - name: Clone
+      tasks:
+        - name: Clone
+          type: public/clone
+    - name: BuildImage
+      tasks:
+        - name: BuildImage
+          type: public/alaudaBuildImage
+          options:
+            timeout: 3600
+  arguments:
+    - displayName:
+        zh-CN: "基本信息"
+        en: "Basic Info"
+      items:
+        - name: "dockerfilePath"
+          schema:
+            type: string
+          binding:
+            - BuildImage.args.dockerfilePath
+          display:
+            type: string
+            name:
+              zh-CN: "Dockerfile路径"
+              en: "Dockerfile's path"
+          required: true
+          default: ./
+        - name: "contextDir"
+          schema:
+            type: string
+          binding:
+            - BuildImage.args.contextDir
+          display:
+            type: string
+            name:
+              zh-CN: "构建路径"
+              en: "Build context"
+          required: true
+          default: ./
+    - displayName:
+        zh-CN: "配置持续集成"
+        en: "CI Configuration"
+      items:
+        - name: "useYaml"
+          schema:
+            type: boolean
+          binding:
+            - BuildImage.args.useYaml
+          display:
+            type: boolean
+            name:
+              zh-CN: "使用 YAML 构建的镜像"
+              en: "Use YAML for CI container"
+            description:
+              zh-CN: 若使用自定义YAML镜像，则会使用您在代码仓库的alaudaci.yml中指定的镜像作为持续集成的运行环境。
+              en: If enabled will use the alaudaci.yml file in the code repository to start a CI container.
+          required: false
+        - name: "ciYamlFile"
+          schema:
+            type: string
+          binding:
+            - BuildImage.args.ciYamlFile
+          display:
+            type: string
+            name:
+              zh-CN: "alaudaci.yaml 文件路径"
+              en: "alaudaci.yml's path"
+          required: false
+          default: ./alaudaci.yml
+          relation:
+            - action: hidden
+              when:
+                name: useYaml
+                value: false
+            - action: show
+              when:
+                name: useYaml
+                value: true
+          validation:
+            pattern: .*\.yml$
+        - name: "ciImage"
+          schema:
+            type: alauda.io/imagerepositorymix
+          binding:
+            - BuildImage.args.ciImage
+          display:
+            type: alauda.io/imagerepositorymix
+            name:
+              zh-CN: "CI镜像"
+              en: "CI image"
+          required: false
+          relation:
+            - action: hidden
+              when:
+                name: useYaml
+                value: true
+            - action: show
+              when:
+                name: useYaml
+                value: false
+        - name: "ciImageTag"
+          schema:
+            type: string
+          binding:
+            - BuildImage.args.ciImageTag
+          display:
+            type: alauda.io/imagetag
+            related: ciImage
+            name:
+              zh-CN: "CI镜像Tag"
+              en: "CI image tag"
+          required: false
+          relation:
+            - action: hidden
+              when:
+                name: useYaml
+                value: true
+            - action: show
+              when:
+                name: useYaml
+                value: false
+        - name: ciImageRegistryCredentialsId
+          schema:
+            type: string
+          binding:
+            - BuildImage.args.ciImageRegistryCredentialsId
+          display:
+            type: alauda.io/jenkinscredentials
+            related: jenkins_integration_id
+            name:
+              zh-CN: "CI镜像：镜像中心凭据"
+              en: "CI image: Registry credentials"
+          required: false
+        - name: "ciCommands"
+          schema:
+            type: string
+          binding:
+            - BuildImage.args.ciCommands
+          display:
+            type: shellscripts
+            name:
+              zh-CN: "自定义命令"
+              en: "CI commands"
+          required: false
+          relation:
+            - action: hidden
+              when:
+                name: useYaml
+                value: true
+            - action: show
+              when:
+                name: useYaml
+                value: false
+    - displayName:
+        zh-CN: 配置镜像仓库 
+        en: Image Repository Configuration
+      items:
+        - name: "image"
+          schema:
+            type: alauda.io/imagerepositorymix
+          binding:
+            - BuildImage.args.image
+          display:
+            type: alauda.io/imagerepositorymix
+            name:
+              zh-CN: "镜像仓库"
+              en: "Image repository"
+            description:
+              zh: "构建生成的镜像"
+              en: "Image repository to store the built image"
+          required: true
+        - name: "imageTag"
+          schema:
+            type: string
+          binding:
+            - BuildImage.args.imageTag
+          display:
+            type: string
+            name:
+              zh-CN: "镜像版本"
+              en: "Customized image tag"
+          default: "latest"
+          required: true
+        - name: imageExtraTag
+          schema:
+            type: string
+          binding:
+            - BuildImage.args.imageExtraTag
+          display:
+            type: string
+            name:
+              zh-CN: "附加版本"
+              en: "Auto generated tag"
+          required: false
+        - name: imageRegistryCredentialsId
+          schema:
+            type: string
+          binding:
+            - BuildImage.args.imageRegistryCredentialsId
+          display:
+            type: alauda.io/jenkinscredentials
+            related: jenkins_integration_id
+            name:
+              zh-CN: "镜像中心凭据"
+              en: "Registry credentials"
+          required: false
+        - name: "useImageCache"
+          schema:
+            type: boolean
+          binding:
+            - BuildImage.args.useImageCache
+          display:
+            type: boolean
+            name:
+              zh-CN: "开启镜像缓存"
+              en: "Use image cache"
+          default: true
+required: true
